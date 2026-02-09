@@ -79,6 +79,24 @@
       color: #c9184a;
       min-height: 30px;
     }
+
+    /* Surprise image */
+    #valentineImage {
+      display: none;
+      margin-top: 20px;
+      max-width: 100%;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 350ms ease, transform 350ms ease;
+    }
+    #valentineImage.show {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
     .hidden { display: none; }
   </style>
 </head>
@@ -93,6 +111,13 @@
     </div>
 
     <div class="result" id="result"></div>
+
+    <!-- ✅ Replace the src value with YOUR uploaded image filename -->
+    <img
+      id="valentineImage"
+      src="im.jpeg"
+      alt="Valentine surprise"
+    />
   </div>
 
   <script>
@@ -100,10 +125,9 @@
     const noBtn = document.getElementById("noBtn");
     const yesBtn = document.getElementById("yesBtn");
     const result = document.getElementById("result");
+    const img = document.getElementById("valentineImage");
 
     let accepted = false;
-
-    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 
     function moveNoButton() {
       if (accepted) return;
@@ -112,7 +136,6 @@
       const btnRect = noBtn.getBoundingClientRect();
 
       const padding = 10;
-
       const maxX = stageRect.width - btnRect.width - padding;
       const maxY = stageRect.height - btnRect.height - padding;
 
@@ -135,19 +158,22 @@
 
     yesBtn.addEventListener("click", () => {
       accepted = true;
-      result.textContent = "Congratulations!";
-      // Optional: hide buttons after success
+
+      result.textContent = "Congratulations! 💖";
+
+      // Hide both buttons after success
       noBtn.classList.add("hidden");
       yesBtn.classList.add("hidden");
+
+      // Show the image (with a smooth fade-in)
+      img.classList.add("show");
     });
 
     // Randomize initial position of "No" a bit after load
     window.addEventListener("load", () => {
-      // Place "No" somewhere not overlapping "Yes"
       moveNoButton();
-      // Put it a bit away from Yes
+      // Nudge away from "Yes" a little
       const yesRect = yesBtn.getBoundingClientRect();
-      const stageRect = stage.getBoundingClientRect();
       const tryNudge = () => {
         const noRect = noBtn.getBoundingClientRect();
         const dx = Math.abs((noRect.left + noRect.width/2) - (yesRect.left + yesRect.width/2));
