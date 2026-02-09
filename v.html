@@ -13,10 +13,11 @@
       place-items: center;
       min-height: 100vh;
       background: radial-gradient(circle at top, #fff0f6, #ffe3ec 60%, #ffd6e7);
+      overflow: hidden;
     }
     .card {
       width: min(520px, calc(100% - 32px));
-      background: rgba(255,255,255,0.9);
+      background: rgba(255,255,255,0.92);
       border: 1px solid rgba(0,0,0,0.06);
       border-radius: 20px;
       box-shadow: 0 10px 35px rgba(0,0,0,0.08);
@@ -24,6 +25,7 @@
       text-align: center;
       position: relative;
       overflow: hidden;
+      z-index: 1;
     }
     h1 {
       margin: 0 0 10px;
@@ -80,11 +82,12 @@
       min-height: 30px;
     }
 
-    /* Surprise image */
+    /* ✅ Smaller surprise image */
     #valentineImage {
       display: none;
-      margin-top: 20px;
-      max-width: 100%;
+      margin: 18px auto 0;
+      width: min(260px, 80%);
+      height: auto;
       border-radius: 16px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.2);
       opacity: 0;
@@ -98,11 +101,23 @@
     }
 
     .hidden { display: none; }
+
+    /* 🎉 Confetti canvas on top of everything */
+    #confettiCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 9999;
+    }
   </style>
 </head>
 <body>
+  <canvas id="confettiCanvas"></canvas>
+
   <div class="card" role="main" aria-live="polite">
-    <h1>Will you be my Valentine?</h1>
+    <h1>Maruski, Will you be my Valentine?</h1>
     <p>(Pick wisely 😄)</p>
 
     <div class="stage" id="stage">
@@ -112,15 +127,14 @@
 
     <div class="result" id="result"></div>
 
-    <!-- ✅ Replace the src value with YOUR uploaded image filename -->
-    <img
-      id="valentineImage"
-      src="im.jpeg"
-      alt="Valentine surprise"
-    />
+    <!-- ✅ Replace src with YOUR uploaded image filename in repo root -->
+    <img id="valentineImage" src="im.jpeg" alt="Valentine surprise" />
   </div>
 
   <script>
+    // -----------------------------
+    // Buttons logic
+    // -----------------------------
     const stage = document.getElementById("stage");
     const noBtn = document.getElementById("noBtn");
     const yesBtn = document.getElementById("yesBtn");
@@ -147,12 +161,9 @@
       noBtn.style.transform = "translate(0, 0)";
     }
 
-    // Dodge on hover / pointer approach
     noBtn.addEventListener("pointerenter", moveNoButton);
     noBtn.addEventListener("mousemove", moveNoButton);
     noBtn.addEventListener("mouseenter", moveNoButton);
-
-    // Also dodge if someone tries to "click" it (touch devices)
     noBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); moveNoButton(); });
     noBtn.addEventListener("click", (e) => { e.preventDefault(); moveNoButton(); });
 
@@ -160,19 +171,17 @@
       accepted = true;
 
       result.textContent = "Congratulations! 💖";
-
-      // Hide both buttons after success
       noBtn.classList.add("hidden");
       yesBtn.classList.add("hidden");
 
-      // Show the image (with a smooth fade-in)
       img.classList.add("show");
+
+      // 🎉 Start confetti for ~3.5 seconds
+      startConfetti(3500);
     });
 
-    // Randomize initial position of "No" a bit after load
     window.addEventListener("load", () => {
       moveNoButton();
-      // Nudge away from "Yes" a little
       const yesRect = yesBtn.getBoundingClientRect();
       const tryNudge = () => {
         const noRect = noBtn.getBoundingClientRect();
@@ -181,6 +190,129 @@
       };
       for (let i = 0; i < 3; i++) tryNudge();
     });
+
+    // -----------------------------
+    // Confetti (no libraries)
+    // -----------------------------
+    const canvas = document.getElementById("confettiCanvas");
+    const ctx = canvas.getContext("2d", { alpha: true });
+
+    function resizeCanvas() {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.floor(window.innerWidth * dpr);
+      canvas.height = Math.floor(window.innerHeight * dpr);
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw in CSS pixels
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    let confettiRunning = false;
+    let confettiPieces = [];
+    let rafId = null;
+
+    function makePiece() {
+      // Start near the top with random X
+      return {
+        x: Math.random() * window.innerWidth,
+        y: -20 - Math.random() * window.innerHeight * 0.2,
+        w: 6 + Math.random() * 8,
+        h: 8 + Math.random() * 10,
+        vx: -2 + Math.random() * 4,
+        vy: 2 + Math.random() * 5,
+        rot: Math.random() * Math.PI,
+        vr: -0.15 + Math.random() * 0.3,
+        shape: Math.random() < 0.5 ? "rect" : "circle",
+        // Random color (no hardcoding a palette)
+        color: `hsl(${Math.floor(Math.random() * 360)} 90% 60%)`,
+        opacity: 0.8 + Math.random() * 0.2
+      };
+    }
+
+    function drawPiece(p) {
+      ctx.globalAlpha = p.opacity;
+      ctx.fillStyle = p.color;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+
+      if (p.shape === "circle") {
+        const r = Math.min(p.w, p.h) / 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      }
+
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
+    function tick() {
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+      // Gravity
+      const g = 0.06;
+
+      for (let i = confettiPieces.length - 1; i >= 0; i--) {
+        const p = confettiPieces[i];
+
+        p.vy += g;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vr;
+
+        // slight air resistance
+        p.vx *= 0.995;
+        p.vy *= 0.995;
+
+        drawPiece(p);
+
+        // Remove if off screen
+        if (p.y > window.innerHeight + 60) {
+          confettiPieces.splice(i, 1);
+        }
+      }
+
+      if (confettiRunning || confettiPieces.length > 0) {
+        rafId = requestAnimationFrame(tick);
+      } else {
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        rafId = null;
+      }
+    }
+
+    function startConfetti(durationMs = 3000) {
+      const now = performance.now();
+      const end = now + durationMs;
+      confettiRunning = true;
+
+      // Burst + continuous sprinkle during duration
+      const spawn = () => {
+        if (!confettiRunning) return;
+
+        const t = performance.now();
+        const remaining = end - t;
+
+        // Spawn rate depends on remaining time (a bit stronger at start)
+        const count = remaining > durationMs * 0.6 ? 22 : 12;
+        for (let i = 0; i < count; i++) confettiPieces.push(makePiece());
+
+        if (t < end) {
+          setTimeout(spawn, 120);
+        } else {
+          confettiRunning = false;
+        }
+      };
+
+      // Start animation loop once
+      if (!rafId) tick();
+
+      // Start spawning
+      spawn();
+    }
   </script>
 </body>
 </html>
