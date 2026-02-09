@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>💌 Valentine?</title>
+  <style>
+    :root { color-scheme: light; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #fff0f6, #ffe3ec 60%, #ffd6e7);
+    }
+    .card {
+      width: min(520px, calc(100% - 32px));
+      background: rgba(255,255,255,0.9);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 20px;
+      box-shadow: 0 10px 35px rgba(0,0,0,0.08);
+      padding: 28px 22px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+    p {
+      margin: 0 0 18px;
+      opacity: 0.75;
+    }
+    .stage {
+      position: relative;
+      height: 160px;
+      margin-top: 12px;
+      border-radius: 16px;
+      background: rgba(255, 228, 240, 0.55);
+      border: 1px dashed rgba(0,0,0,0.12);
+      overflow: hidden;
+    }
+    .btn {
+      padding: 12px 18px;
+      border-radius: 14px;
+      border: 0;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 700;
+      transition: transform 120ms ease, box-shadow 120ms ease;
+      user-select: none;
+      position: absolute;
+    }
+    .btn:active { transform: scale(0.98); }
+    #yesBtn {
+      left: 50%;
+      top: 55%;
+      transform: translate(-120%, -50%);
+      background: #ff4d6d;
+      color: #fff;
+      box-shadow: 0 10px 20px rgba(255, 77, 109, 0.28);
+    }
+    #noBtn {
+      left: 50%;
+      top: 55%;
+      transform: translate(20%, -50%);
+      background: #fff;
+      color: #222;
+      border: 1px solid rgba(0,0,0,0.12);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.06);
+    }
+    .result {
+      margin-top: 18px;
+      font-size: 22px;
+      font-weight: 800;
+      color: #c9184a;
+      min-height: 30px;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card" role="main" aria-live="polite">
+    <h1>Will you be my Valentine?</h1>
+    <p>(Pick wisely 😄)</p>
+
+    <div class="stage" id="stage">
+      <button class="btn" id="yesBtn" type="button">Yes</button>
+      <button class="btn" id="noBtn" type="button" aria-label="No">No</button>
+    </div>
+
+    <div class="result" id="result"></div>
+  </div>
+
+  <script>
+    const stage = document.getElementById("stage");
+    const noBtn = document.getElementById("noBtn");
+    const yesBtn = document.getElementById("yesBtn");
+    const result = document.getElementById("result");
+
+    let accepted = false;
+
+    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+    function moveNoButton() {
+      if (accepted) return;
+
+      const stageRect = stage.getBoundingClientRect();
+      const btnRect = noBtn.getBoundingClientRect();
+
+      const padding = 10;
+
+      const maxX = stageRect.width - btnRect.width - padding;
+      const maxY = stageRect.height - btnRect.height - padding;
+
+      const x = Math.random() * maxX + padding;
+      const y = Math.random() * maxY + padding;
+
+      noBtn.style.left = x + "px";
+      noBtn.style.top = y + "px";
+      noBtn.style.transform = "translate(0, 0)";
+    }
+
+    // Dodge on hover / pointer approach
+    noBtn.addEventListener("pointerenter", moveNoButton);
+    noBtn.addEventListener("mousemove", moveNoButton);
+    noBtn.addEventListener("mouseenter", moveNoButton);
+
+    // Also dodge if someone tries to "click" it (touch devices)
+    noBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); moveNoButton(); });
+    noBtn.addEventListener("click", (e) => { e.preventDefault(); moveNoButton(); });
+
+    yesBtn.addEventListener("click", () => {
+      accepted = true;
+      result.textContent = "Congratulations!";
+      // Optional: hide buttons after success
+      noBtn.classList.add("hidden");
+      yesBtn.classList.add("hidden");
+    });
+
+    // Randomize initial position of "No" a bit after load
+    window.addEventListener("load", () => {
+      // Place "No" somewhere not overlapping "Yes"
+      moveNoButton();
+      // Put it a bit away from Yes
+      const yesRect = yesBtn.getBoundingClientRect();
+      const stageRect = stage.getBoundingClientRect();
+      const tryNudge = () => {
+        const noRect = noBtn.getBoundingClientRect();
+        const dx = Math.abs((noRect.left + noRect.width/2) - (yesRect.left + yesRect.width/2));
+        if (dx < 90) moveNoButton();
+      };
+      for (let i = 0; i < 3; i++) tryNudge();
+    });
+  </script>
+</body>
+</html>
